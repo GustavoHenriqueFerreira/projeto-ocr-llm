@@ -9,11 +9,10 @@ export class LlmService {
     if (!prompt) return '';
 
     const res = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${this.apiKey}`,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
       {
         contents: [
           {
-            role: 'user',
             parts: [
               {
                 text: prompt,
@@ -25,7 +24,9 @@ export class LlmService {
       {
         headers: {
           'Content-Type': 'application/json',
+          'x-goog-api-key': this.apiKey,
         },
+        timeout: 15000,
       },
     );
 
