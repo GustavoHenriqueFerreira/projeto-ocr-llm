@@ -44,9 +44,27 @@ export class DocumentsService {
 
   async findOne(id: string, userId: string) {
     return this.prisma.document.findFirst({
-      where: {
-        id,
-        userId,
+      where: { id, userId },
+      include: { ocrResult: true },
+    });
+  }
+
+  async saveOcrResult(documentId: string, text: string) {
+    const existing = await this.prisma.oCRResult.findUnique({
+      where: { documentId },
+    });
+
+    if (existing) {
+      return this.prisma.oCRResult.update({
+        where: { documentId },
+        data: { text, processedAt: new Date() },
+      });
+    }
+
+    return this.prisma.oCRResult.create({
+      data: {
+        text,
+        documentId,
       },
     });
   }
