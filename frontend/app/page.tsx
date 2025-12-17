@@ -93,12 +93,6 @@ export default function Dashboard() {
     setQuestion("");
 
     try {
-      if (doc.ocrResult?.text) {
-        setSelectedDoc(doc);
-        setOcrText(doc.ocrResult.text);
-        return;
-      }
-
       const res = await authFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/ocr/process/${doc.id}`,
         { method: "POST" }
@@ -118,7 +112,7 @@ export default function Dashboard() {
               ...d,
               ocrResult: {
                 text: data.text,
-                processedAt: new Date().toISOString(),
+                processedAt: data.processedAt,
               },
             }
             : d
