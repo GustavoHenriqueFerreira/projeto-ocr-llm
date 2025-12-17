@@ -8,89 +8,123 @@ type Document = {
   id: string;
   filename: string;
   uploadedAt: string;
-  ocrResult?: { text: string; processedAt: string };
+  ocrResult?: {
+    text: string;
+    processedAt: string;
+  };
 };
 
 export default function Dashboard() {
-  const [file, setFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"success" | "error" | "info" | "">("");
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const [ocrText, setOcrText] = useState("");
-  const [llmPrompt, setLlmPrompt] = useState("");
-  const [llmResponse, setLlmResponse] = useState("");
   const router = useRouter();
 
+  const [file, setFile] = useState<File | null>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+
+  const [ocrText, setOcrText] = useState("");
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] =
+    useState<"success" | "error" | "info" | "">("");
+
+  /* ================= AUTH ================= */
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) router.push("/login");
     else fetchDocuments();
   }, []);
 
+  /* ================= DOCUMENTS ================= */
   async function fetchDocuments() {
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/documents`);
-      if (!res.ok) throw new Error("Erro ao buscar documentos");
-      const data = await res.json();
-      setDocuments(data);
-    } catch (err) {
-      console.error(err);
+      const res = await authFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/documents`
+      );
+      if (!res.ok) throw new Error();
+      setDocuments(await res.json());
+    } catch {
       setMessage("Erro ao buscar documentos");
       setMessageType("error");
     }
   }
 
+  /* ================= UPLOAD ================= */
   async function handleUpload() {
     if (!file) {
-      setMessage("Selecione um arquivo antes de enviar");
+      setMessage("Selecione um arquivo");
       setMessageType("error");
       return;
     }
+
     setLoading(true);
     setMessage("Enviando documento...");
     setMessageType("info");
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/documents/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Erro no upload");
-      setMessage("Documento enviado com sucesso!");
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await authFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/documents/upload`,
+        { method: "POST", body: formData }
+      );
+
+      if (!res.ok) throw new Error();
+
+      setMessage("Documento enviado com sucesso");
       setMessageType("success");
       setFile(null);
       fetchDocuments();
-    } catch (err) {
-      console.error(err);
-      setMessage("Erro ao enviar documento");
+    } catch {
+      setMessage("Erro no upload");
       setMessageType("error");
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleProcessOCR(docId: string) {
+  /* ================= OCR ================= */
+  async function handleOCR(doc: Document) {
     setLoading(true);
-    setMessage("Processando OCR...");
-    setMessageType("info");
+    setAnswer("");
+    setQuestion("");
+
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/ocr/process/${docId}`, {
-        method: "POST",
-        body: new FormData(), // se quiser mandar o arquivo, use file
-      });
-      if (!res.ok) throw new Error("Erro ao processar OCR");
+      if (doc.ocrResult?.text) {
+        setSelectedDoc(doc);
+        setOcrText(doc.ocrResult.text);
+        return;
+      }
+
+      const res = await authFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/ocr/process/${doc.id}`,
+        { method: "POST" }
+      );
+
+      if (!res.ok) throw new Error();
+
       const data = await res.json();
+
+      setSelectedDoc(doc);
       setOcrText(data.text);
-      setSelectedDocId(docId);
-      setMessage("OCR processado com sucesso!");
-      setMessageType("success");
-    } catch (err) {
-      console.error(err);
+
+      setDocuments(prev =>
+        prev.map(d =>
+          d.id === doc.id
+            ? {
+                ...d,
+                ocrResult: {
+                  text: data.text,
+                  processedAt: new Date().toISOString(),
+                },
+              }
+            : d
+        )
+      );
+    } catch {
       setMessage("Erro ao processar OCR");
       setMessageType("error");
     } finally {
@@ -98,69 +132,63 @@ export default function Dashboard() {
     }
   }
 
-  async function handleLLMExplain() {
-    if (!selectedDocId || !llmPrompt) return;
+  /* ================= LLM ================= */
+  async function handleAskLLM() {
+    if (!selectedDoc || !question) return;
+
     setLoading(true);
     setMessage("Consultando LLM...");
     setMessageType("info");
+
+    const prompt = `
+Você é um assistente especializado em explicar documentos financeiros para usuários leigos.
+Responda de forma clara, objetiva e em português.
+
+=== TEXTO DO DOCUMENTO (OCR) ===
+${ocrText}
+
+=== PERGUNTA DO USUÁRIO ===
+${question}
+`;
+
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/llm/explain`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentId: selectedDocId, text: llmPrompt }),
-      });
-      if (!res.ok) throw new Error("Erro na LLM");
+      const res = await authFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/llm/explain`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            documentId: selectedDoc.id,
+            prompt,
+          }),
+        }
+      );
+
+      if (!res.ok) throw new Error();
+
       const data = await res.json();
-      setLlmResponse(data.explanation);
-      setMessage("Resposta recebida!");
+      setAnswer(data.answer);
+
+      setMessage("Resposta recebida");
       setMessageType("success");
-    } catch (err) {
-      console.error(err);
-      setMessage("Erro na LLM");
+    } catch {
+      setMessage("Erro ao consultar LLM");
       setMessageType("error");
     } finally {
       setLoading(false);
     }
   }
 
+  /* ================= LOGOUT ================= */
   function handleLogout() {
     localStorage.removeItem("token");
     router.push("/login");
   }
 
-  async function handleDownload(docId: string, filename: string) {
-    setLoading(true);
-    setMessage("Gerando PDF...");
-    setMessageType("info");
-
-    try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/documents/${docId}/download`);
-      if (!res.ok) throw new Error("Erro ao gerar PDF");
-
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${filename}-ocr.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      setMessage("PDF gerado com sucesso!");
-      setMessageType("success");
-    } catch (err) {
-      console.error(err);
-      setMessage("Erro ao gerar PDF");
-      setMessageType("error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  /* ================= UI ================= */
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start p-8 gap-6">
+    <main className="flex min-h-screen flex-col items-center p-8 gap-6">
+      {/* Header */}
       <div className="flex w-full max-w-md justify-between items-center">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <button
@@ -172,19 +200,19 @@ export default function Dashboard() {
       </div>
 
       {/* Upload */}
-      <div className="flex flex-col items-center gap-2 border p-4 rounded w-full max-w-md">
+      <div className="border p-4 rounded w-full max-w-md flex flex-col gap-2">
         <input
           type="file"
           accept="image/*,.pdf"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="border p-2 w-full rounded bg-white text-black"
+          onChange={e => setFile(e.target.files?.[0] ?? null)}
+          className="border p-2 rounded"
         />
         <button
           onClick={handleUpload}
           disabled={loading}
-          className="px-4 py-2 bg-black text-white rounded w-full"
+          className="bg-black text-white py-2 rounded"
         >
-          {loading ? "Enviando..." : "Enviar"}
+          Enviar documento
         </button>
         {message && (
           <p
@@ -192,8 +220,8 @@ export default function Dashboard() {
               messageType === "success"
                 ? "text-green-500"
                 : messageType === "error"
-                  ? "text-red-500"
-                  : "text-blue-500"
+                ? "text-red-500"
+                : "text-blue-500"
             }
           >
             {message}
@@ -201,63 +229,65 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Lista de documentos */}
+      {/* Documents */}
       <div className="w-full max-w-md">
-        <h2 className="text-xl font-bold mb-2">Meus Documentos</h2>
+        <h2 className="font-bold mb-2">Meus documentos</h2>
         <ul className="space-y-2">
-          {documents.map((doc) => (
-            <li key={doc.id} className="border p-2 rounded flex justify-between items-center">
+          {documents.map(doc => (
+            <li
+              key={doc.id}
+              className="border p-2 rounded flex justify-between"
+            >
               <div>
                 <p>{doc.filename}</p>
                 <small>{new Date(doc.uploadedAt).toLocaleString()}</small>
               </div>
               <button
-                className="px-2 py-1 bg-blue-500 text-white rounded"
-                onClick={() => handleProcessOCR(doc.id)}
+                onClick={() => handleOCR(doc)}
+                className="bg-blue-500 text-white px-2 rounded"
               >
                 OCR
               </button>
-              <button
-                className="px-2 py-1 bg-purple-500 text-white rounded ml-2"
-                onClick={() => handleDownload(doc.id, doc.filename)}
-              >
-                Download PDF
-              </button>
             </li>
           ))}
-          {documents.length === 0 && <p>Nenhum documento enviado ainda.</p>}
         </ul>
       </div>
 
-      {/* OCR & LLM */}
-      {selectedDocId && (
+      {/* OCR + LLM */}
+      {selectedDoc && (
         <div className="w-full max-w-md border p-4 rounded flex flex-col gap-2">
-          <h2 className="font-bold text-lg">Texto OCR</h2>
+          <h2 className="font-bold">Texto extraído</h2>
           <textarea
-            className="border p-2 w-full h-32 bg-white text-black"
+            className="border p-2 h-32"
             value={ocrText}
             readOnly
           />
-          <h2 className="font-bold text-lg mt-2">Pergunte à LLM</h2>
+
+          <h2 className="font-bold">Pergunta</h2>
           <textarea
-            className="border p-2 w-full h-24"
-            placeholder="Digite sua pergunta sobre o documento"
-            value={llmPrompt}
-            onChange={(e) => setLlmPrompt(e.target.value)}
+            className="border p-2 h-24"
+            value={question}
+            onChange={e => setQuestion(e.target.value)}
+            placeholder="Faça uma pergunta sobre o documento"
           />
+
           <button
-            className="px-4 py-2 bg-green-500 text-white rounded"
-            onClick={handleLLMExplain}
+            onClick={handleAskLLM}
             disabled={loading}
+            className="bg-green-600 text-white py-2 rounded"
           >
-            {loading ? "Aguardando..." : "Perguntar"}
+            Perguntar
           </button>
-          {llmResponse && (
-            <textarea
-              className="border p-2 w-full h-32 bg-gray-100 text-black"
-              value={llmResponse}
-              readOnly
-            />
+
+          {answer && (
+            <>
+              <h2 className="font-bold">Resposta</h2>
+              <textarea
+                className="border p-2 h-32 bg-gray-100"
+                value={answer}
+                readOnly
+              />
+            </>
           )}
         </div>
       )}
