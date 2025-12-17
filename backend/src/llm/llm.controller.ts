@@ -5,35 +5,46 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('llm')
 export class LlmController {
-  constructor(
-    private llmService: LlmService,
-    private prisma: PrismaService,
-  ) {}
+    constructor(
+        private llmService: LlmService,
+        private prisma: PrismaService,
+    ) { }
 
-  @UseGuards(JwtAuthGuard)
-  @Post('explain')
-  async explain(
-    @Body('documentId') documentId: string,
-    @Body('prompt') prompt: string,
-    @Req() req,
-  ) {
-    const answer = await this.llmService.explainText(prompt);
+    @UseGuards(JwtAuthGuard)
+    @Post('explain')
+    async explain(
+        @Body('documentId') documentId: string,
+        @Body('question') question: string,
+        @Body('ocrText') ocrText: string,
+    ) {
+        const prompt = `
+Você é um assistente especializado em explicar documentos para usuários leigos.
+Responda de forma clara, objetiva e em português.
 
-    await this.prisma.interaction.createMany({
-      data: [
-        {
-          role: 'user',
-          message: prompt,
-          documentId,
-        },
-        {
-          role: 'llm',
-          message: answer,
-          documentId,
-        },
-      ],
-    });
+=== TEXTO DO DOCUMENTO ===
+${ocrText}
 
-    return { answer };
-  }
+=== PERGUNTA DO USUÁRIO ===
+${question}
+`;
+
+        const answer = await this.llmService.explainText(prompt);
+
+        await this.prisma.interaction.createMany({
+            data: [
+                {
+                    role: 'user',
+                    message: question,
+                    documentId,
+                },
+                {
+                    role: 'llm',
+                    message: answer,
+                    documentId,
+                },
+            ],
+        });
+
+        return { answer };
+    }
 }

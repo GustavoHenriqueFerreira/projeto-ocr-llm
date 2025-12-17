@@ -76,24 +76,28 @@ export class DocumentsService {
     /* ===== CAPA ===== */
     pdf
       .fontSize(20)
-      .text('Documento Processado', { align: 'center' })
-      .moveDown();
+      .text('Documento Processado', { align: 'center' });
+
+    pdf.moveDown(2);
 
     pdf
       .fontSize(12)
       .text(`Nome do arquivo: ${doc.filename}`)
-      .text(`Data de upload: ${doc.uploadedAt.toLocaleString()}`)
-      .moveDown(2);
+      .moveDown(0.5)
+      .text(`Data de upload: ${doc.uploadedAt.toLocaleString()}`);
 
     /* ===== OCR ===== */
     if (doc.ocrResult?.text) {
+      const ocrText = doc.ocrResult.text.replace(/\n+/g, '\n');
+      
       pdf
         .addPage()
         .fontSize(16)
-        .text('Texto Extraído (OCR)', { underline: true })
-        .moveDown();
+        .text('Texto Extraído (OCR)', { underline: true });
 
-      pdf.fontSize(11).text(doc.ocrResult.text, {
+      pdf.moveDown();
+
+      pdf.fontSize(11).text(ocrText, {
         align: 'left',
       });
     }
@@ -111,31 +115,22 @@ export class DocumentsService {
         const answer = doc.interactions[i + 1];
 
         if (question?.role === 'user') {
-          pdf
-            .fontSize(12)
-            .text('Pergunta:', { continued: false })
-            .font('Helvetica-Bold')
-            .text(question.message)
-            .font('Helvetica')
-            .moveDown(0.5);
+          pdf.font('Helvetica-Bold').text('Pergunta:');
+          pdf.font('Helvetica').text(question.message).moveDown();
         }
 
         if (answer?.role === 'llm') {
-          pdf
-            .fontSize(12)
-            .text('Resposta:', { continued: false })
-            .font('Helvetica-Bold')
-            .text(answer.message)
-            .font('Helvetica')
-            .moveDown(1.5);
+          pdf.font('Helvetica-Bold').text('Resposta:');
+          pdf.font('Helvetica').text(answer.message).moveDown(1.5);
         }
       }
     }
 
     pdf.end();
-    await new Promise(resolve => pdf.on('end', resolve));
 
-    return buffer.getBuffer();
+    await new Promise(resolve => buffer.on('finish', resolve));
+
+    return buffer.getContents() as Buffer;
   }
 
   async getFileBuffer(fileUrl: string): Promise<Buffer> {

@@ -28,6 +28,7 @@ export class DocumentsController {
     return this.documentsService.findOne(id, req.user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(':id/download')
   async downloadPdf(
     @Param('id') id: string,
@@ -41,14 +42,14 @@ export class DocumentsController {
 
     const pdfBuffer = await this.documentsService.generatePdf(id);
 
-    const filename = `${document.filename}-ocr-llm.pdf`;
-
+    res.status(200);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="${filename}"`,
+      `attachment; filename="${document.filename}-ocr-llm.pdf"`,
     );
+    res.setHeader('Content-Length', pdfBuffer.length);
 
-    res.send(pdfBuffer);
+    return res.end(pdfBuffer);
   }
 }
