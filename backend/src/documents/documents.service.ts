@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import PDFDocument from 'pdfkit';
 import streamBuffers from 'stream-buffers';
+import axios from 'axios';
 
 @Injectable()
 export class DocumentsService {
@@ -89,5 +90,10 @@ export class DocumentsService {
     await new Promise(resolve => pdf.on('end', resolve));
 
     return writableBuffer.getBuffer();
+  }
+
+  async getFileBuffer(fileUrl: string): Promise<Buffer> {
+    const res = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+    return Buffer.from(res.data);
   }
 }
