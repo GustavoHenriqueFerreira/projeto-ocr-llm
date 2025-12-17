@@ -33,6 +33,9 @@ export class DocumentsService {
     return this.prisma.document.findMany({
       where: { userId },
       orderBy: { uploadedAt: 'desc' },
+      include: {
+        ocrResult: true,
+      },
     });
   }
 
