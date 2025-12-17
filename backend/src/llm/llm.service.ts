@@ -9,7 +9,7 @@ export class LlmService {
     if (!prompt) return '';
 
     const res = await axios.post(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',
       {
         contents: [
           {
