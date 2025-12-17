@@ -5,37 +5,35 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('llm')
 export class LlmController {
-    constructor(
-        private llmService: LlmService,
-        private prisma: PrismaService,
-    ) { }
+  constructor(
+    private llmService: LlmService,
+    private prisma: PrismaService,
+  ) {}
 
-    @UseGuards(JwtAuthGuard)
-    @Post('explain')
-    async explain(
-        @Body('documentId') documentId: string,
-        @Body('question') question: string,
-        @Req() req,
-    ) {
-        // Gera explicação via LLM
-        const answer = await this.llmService.explainText(question);
+  @UseGuards(JwtAuthGuard)
+  @Post('explain')
+  async explain(
+    @Body('documentId') documentId: string,
+    @Body('prompt') prompt: string,
+    @Req() req,
+  ) {
+    const answer = await this.llmService.explainText(prompt);
 
-        // Salva pergunta e resposta no banco
-        await this.prisma.interaction.createMany({
-            data: [
-                {
-                    role: 'user',
-                    message: question,
-                    documentId,
-                },
-                {
-                    role: 'llm',
-                    message: answer,
-                    documentId,
-                },
-            ],
-        });
+    await this.prisma.interaction.createMany({
+      data: [
+        {
+          role: 'user',
+          message: prompt,
+          documentId,
+        },
+        {
+          role: 'llm',
+          message: answer,
+          documentId,
+        },
+      ],
+    });
 
-        return { answer };
-    }
+    return { answer };
+  }
 }

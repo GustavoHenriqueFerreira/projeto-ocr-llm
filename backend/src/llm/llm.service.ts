@@ -5,22 +5,32 @@ import axios from 'axios';
 export class LlmService {
   private apiKey = process.env.GEMINI_API_KEY;
 
-  async explainText(text: string) {
-    if (!text) return '';
+  async explainText(prompt: string): Promise<string> {
+    if (!prompt) return '';
+
     const res = await axios.post(
-      'https://api.openai.com/v1/responses',
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${this.apiKey}`,
       {
-        model: 'gemini-1.5-t',
-        input: `Explique o seguinte texto de forma clara e resumida:\n\n${text}`,
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
       },
       {
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
       },
     );
 
-    return res.data.output_text || '';
+    return (
+      res.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+    );
   }
 }
