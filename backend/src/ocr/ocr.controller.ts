@@ -8,21 +8,45 @@ export class OcrController {
   constructor(
     private readonly ocrService: OcrService,
     private readonly documentsService: DocumentsService,
-  ) {}
+  ) { }
 
   @UseGuards(JwtAuthGuard)
   @Post('process/:documentId')
   async processDocument(@Param('documentId') documentId: string, @Req() req) {
-    const document = await this.documentsService.findOne(documentId, req.user.userId);
+    const document = await this.documentsService.findOne(
+      documentId,
+      req.user.userId,
+    );
+
     if (!document) {
-      throw new NotFoundException('Documento não encontrado ou não pertence ao usuário');
+      throw new NotFoundException(
+        'Documento não encontrado ou não pertence ao usuário',
+      );
     }
 
-    const fileBuffer = await this.documentsService.getFileBuffer(document.fileUrl);
-    const text = await this.ocrService.extractTextFromBuffer(fileBuffer);
-    const ocrResult = await this.documentsService.saveOcrResult(documentId, text);
+    if (document.ocrResult) {
+      return {
+        text: document.ocrResult.text,
+        processedAt: document.ocrResult.processedAt,
+        fromCache: true,
+      };
+    }
 
-    return { success: true, text: ocrResult.text };
+    const fileBuffer = await this.documentsService.getFileBuffer(
+      document.fileUrl,
+    );
+
+    const text = await this.ocrService.extractTextFromBuffer(fileBuffer);
+    const ocrResult = await this.documentsService.saveOcrResult(
+      documentId,
+      text,
+    );
+
+    return {
+      text: ocrResult.text,
+      processedAt: ocrResult.processedAt,
+      fromCache: false,
+    };
   }
 
   @UseGuards(JwtAuthGuard)
