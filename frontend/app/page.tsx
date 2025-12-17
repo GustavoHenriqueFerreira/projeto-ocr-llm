@@ -115,12 +115,12 @@ export default function Dashboard() {
         prev.map(d =>
           d.id === doc.id
             ? {
-                ...d,
-                ocrResult: {
-                  text: data.text,
-                  processedAt: new Date().toISOString(),
-                },
-              }
+              ...d,
+              ocrResult: {
+                text: data.text,
+                processedAt: new Date().toISOString(),
+              },
+            }
             : d
         )
       );
@@ -176,10 +176,10 @@ export default function Dashboard() {
     setMessageType("info");
 
     const prompt = `
-Você é um assistente especializado em explicar documentos financeiros para usuários leigos.
+Você é um assistente especializado em explicar documentos para usuários leigos.
 Responda de forma clara, objetiva e em português.
 
-=== TEXTO DO DOCUMENTO (OCR) ===
+=== TEXTO DO DOCUMENTO ===
 ${ocrText}
 
 === PERGUNTA DO USUÁRIO ===
@@ -255,8 +255,8 @@ ${question}
               messageType === "success"
                 ? "text-green-500"
                 : messageType === "error"
-                ? "text-red-500"
-                : "text-blue-500"
+                  ? "text-red-500"
+                  : "text-blue-500"
             }
           >
             {message}
@@ -329,7 +329,7 @@ ${question}
             <>
               <h2 className="font-bold">Resposta</h2>
               <textarea
-                className="border p-2 h-32 bg-gray-100"
+                className="border p-2 h-32 bg-gray-100 text-black"
                 value={answer}
                 readOnly
               />
