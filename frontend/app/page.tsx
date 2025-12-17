@@ -132,9 +132,44 @@ export default function Dashboard() {
     }
   }
 
+  /* ================= DOWNLOAD PDF ================= */
+  async function handleDownload(doc: Document) {
+    setLoading(true);
+    setMessage("Gerando PDF...");
+    setMessageType("info");
+
+    try {
+      const res = await authFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/documents/${doc.id}/download`
+      );
+
+      if (!res.ok) throw new Error();
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${doc.filename}-ocr-llm.pdf`;
+      document.body.appendChild(a);
+      a.click();
+
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      setMessage("PDF baixado com sucesso");
+      setMessageType("success");
+    } catch {
+      setMessage("Erro ao baixar PDF");
+      setMessageType("error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   /* ================= LLM ================= */
   async function handleAskLLM() {
-    if (!selectedDoc || !question) return;
+    if (!selectedDoc || !question || !ocrText) return;
 
     setLoading(true);
     setMessage("Consultando LLM...");
@@ -210,7 +245,7 @@ ${question}
         <button
           onClick={handleUpload}
           disabled={loading}
-          className="bg-black text-white py-2 rounded"
+          className="bg-black text-white py-2 rounded disabled:opacity-50"
         >
           Enviar documento
         </button>
@@ -236,18 +271,33 @@ ${question}
           {documents.map(doc => (
             <li
               key={doc.id}
-              className="border p-2 rounded flex justify-between"
+              className="border p-2 rounded flex justify-between items-center"
             >
               <div>
                 <p>{doc.filename}</p>
                 <small>{new Date(doc.uploadedAt).toLocaleString()}</small>
+                <p className="text-xs text-gray-500">
+                  {doc.ocrResult ? "OCR processado" : "OCR pendente"}
+                </p>
               </div>
-              <button
-                onClick={() => handleOCR(doc)}
-                className="bg-blue-500 text-white px-2 rounded"
-              >
-                OCR
-              </button>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleOCR(doc)}
+                  disabled={loading}
+                  className="bg-blue-500 text-white px-2 rounded disabled:opacity-50"
+                >
+                  OCR
+                </button>
+
+                <button
+                  onClick={() => handleDownload(doc)}
+                  disabled={loading}
+                  className="bg-purple-600 text-white px-2 rounded disabled:opacity-50"
+                >
+                  PDF
+                </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -257,11 +307,7 @@ ${question}
       {selectedDoc && (
         <div className="w-full max-w-md border p-4 rounded flex flex-col gap-2">
           <h2 className="font-bold">Texto extraído</h2>
-          <textarea
-            className="border p-2 h-32"
-            value={ocrText}
-            readOnly
-          />
+          <textarea className="border p-2 h-32" value={ocrText} readOnly />
 
           <h2 className="font-bold">Pergunta</h2>
           <textarea
@@ -273,8 +319,8 @@ ${question}
 
           <button
             onClick={handleAskLLM}
-            disabled={loading}
-            className="bg-green-600 text-white py-2 rounded"
+            disabled={loading || !ocrText}
+            className="bg-green-600 text-white py-2 rounded disabled:opacity-50"
           >
             Perguntar
           </button>
