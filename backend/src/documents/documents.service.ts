@@ -61,35 +61,78 @@ export class DocumentsService {
     });
   }
 
-  async generatePdf(documentId: string) {
+  async generatePdf(documentId: string): Promise<Buffer> {
     const doc = await this.findById(documentId);
     if (!doc) throw new BadRequestException('Documento não encontrado');
 
-    const pdf = new PDFDocument();
-    const writableBuffer = new streamBuffers.WritableStreamBuffer();
+    const pdf = new PDFDocument({ margin: 50 });
+    const buffer = new streamBuffers.WritableStreamBuffer();
 
-    pdf.pipe(writableBuffer);
+    pdf.pipe(buffer);
 
-    pdf.fontSize(18).text(`Documento: ${doc.filename}`, { underline: true });
-    pdf.moveDown();
+    /* ===== CAPA ===== */
+    pdf
+      .fontSize(20)
+      .text('Documento Processado', { align: 'center' })
+      .moveDown();
 
-    if (doc.ocrResult) {
-      pdf.fontSize(14).text('Texto OCR:', { bold: true });
-      pdf.fontSize(12).text(doc.ocrResult.text);
-      pdf.moveDown();
+    pdf
+      .fontSize(12)
+      .text(`Nome do arquivo: ${doc.filename}`)
+      .text(`Data de upload: ${doc.uploadedAt.toLocaleString()}`)
+      .moveDown(2);
+
+    /* ===== OCR ===== */
+    if (doc.ocrResult?.text) {
+      pdf
+        .addPage()
+        .fontSize(16)
+        .text('Texto Extraído (OCR)', { underline: true })
+        .moveDown();
+
+      pdf.fontSize(11).text(doc.ocrResult.text, {
+        align: 'left',
+      });
     }
 
+    /* ===== LLM ===== */
     if (doc.interactions?.length) {
-      pdf.fontSize(14).text('Interações LLM:', { bold: true });
-      doc.interactions.forEach(i => {
-        pdf.fontSize(12).text(`[${i.role}] ${i.message}`);
-      });
+      pdf
+        .addPage()
+        .fontSize(16)
+        .text('Interações com a LLM', { underline: true })
+        .moveDown();
+
+      for (let i = 0; i < doc.interactions.length; i += 2) {
+        const question = doc.interactions[i];
+        const answer = doc.interactions[i + 1];
+
+        if (question?.role === 'user') {
+          pdf
+            .fontSize(12)
+            .text('Pergunta:', { continued: false })
+            .font('Helvetica-Bold')
+            .text(question.message)
+            .font('Helvetica')
+            .moveDown(0.5);
+        }
+
+        if (answer?.role === 'llm') {
+          pdf
+            .fontSize(12)
+            .text('Resposta:', { continued: false })
+            .font('Helvetica-Bold')
+            .text(answer.message)
+            .font('Helvetica')
+            .moveDown(1.5);
+        }
+      }
     }
 
     pdf.end();
     await new Promise(resolve => pdf.on('end', resolve));
 
-    return writableBuffer.getBuffer();
+    return buffer.getBuffer();
   }
 
   async getFileBuffer(fileUrl: string): Promise<Buffer> {

@@ -7,7 +7,7 @@ import type { Response } from 'express';
 
 @Controller('documents')
 export class DocumentsController {
-  constructor(private documentsService: DocumentsService) {}
+  constructor(private documentsService: DocumentsService) { }
 
   @UseGuards(JwtAuthGuard)
   @Post('upload')
@@ -28,20 +28,27 @@ export class DocumentsController {
     return this.documentsService.findOne(id, req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get(':id/download')
-  async downloadPdf(@Param('id') id: string, @Req() req, @Res() res: Response) {
+  async downloadPdf(
+    @Param('id') id: string,
+    @Req() req,
+    @Res() res: Response,
+  ) {
     const document = await this.documentsService.findOne(id, req.user.userId);
-    if (!document) return res.status(404).send('Documento não encontrado');
+    if (!document) {
+      return res.status(404).json({ message: 'Documento não encontrado' });
+    }
 
     const pdfBuffer = await this.documentsService.generatePdf(id);
 
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${document.filename}.pdf"`,
-      'Content-Length': pdfBuffer.length,
-    });
+    const filename = `${document.filename}-ocr-llm.pdf`;
 
-    res.end(pdfBuffer);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}"`,
+    );
+
+    res.send(pdfBuffer);
   }
 }
