@@ -87,20 +87,52 @@ backend/
 Crie um arquivo `.env` na pasta `backend`:
 
 ```env
-# Database
+# ==============================
+# Database (Supabase - PostgreSQL)
+# ==============================
+# 1. Crie uma conta em https://supabase.com
+# 2. Crie um novo projeto
+# 3. Vá em Settings > Database
+# 4. Copie a "Connection string" (PostgreSQL)
 DATABASE_URL=
 
-# Auth
+# ==============================
+# Auth (JWT)
+# ==============================
+# Chave secreta usada para assinar os tokens JWT
+# Pode ser qualquer string segura
+# Exemplo de geração:
+# openssl rand -base64 32
 JWT_SECRET=
 
-# Supabase
+# ==============================
+# Supabase (Storage / Service)
+# ==============================
+# SUPABASE_URL:
+# 1. No projeto Supabase, vá em Settings > API
+# 2. Copie o "Project URL"
 SUPABASE_URL=
+
+# SUPABASE_SERVICE_ROLE_KEY:
+# 1. Ainda em Settings > API
+# 2. Copie a "Service Role Key"
+# ⚠️ Nunca usar essa chave no frontend
 SUPABASE_SERVICE_ROLE_KEY=
 
-# OCR
+# ==============================
+# OCR (OCR.Space)
+# ==============================
+# 1. Crie uma conta em https://ocr.space/
+# 2. Vá em API Keys
+# 3. Gere uma chave de API
 OCR_SPACE_API_KEY=
 
-# LLM
+# ==============================
+# LLM (Google Gemini)
+# ==============================
+# 1. Acesse https://ai.google.dev/
+# 2. Crie ou selecione um projeto
+# 3. Gere uma API Key
 GEMINI_API_KEY=
 ```
 
@@ -249,5 +281,3 @@ NEXT_PUBLIC_API_URL=https://projeto-ocr-llm.onrender.com
 * O texto OCR **é armazenado no banco** (não depende do front)
 * O LLM sempre consulta o OCR salvo
 * PDFs são gerados dinamicamente no backend
-
----
