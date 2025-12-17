@@ -169,17 +169,6 @@ export default function Dashboard() {
     setMessage("Consultando LLM...");
     setMessageType("info");
 
-    const prompt = `
-Você é um assistente especializado em explicar documentos para usuários leigos.
-Responda de forma clara, objetiva e em português.
-
-=== TEXTO DO DOCUMENTO ===
-${ocrText}
-
-=== PERGUNTA DO USUÁRIO ===
-${question}
-`;
-
     try {
       const res = await authFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/llm/explain`,
@@ -188,7 +177,7 @@ ${question}
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             documentId: selectedDoc.id,
-            prompt,
+            question,
           }),
         }
       );
