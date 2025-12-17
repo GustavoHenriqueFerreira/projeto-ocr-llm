@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  password  String
+  name      String?
+  createdAt DateTime   @default(now())
+
+  documents Document[]
+}
+
+model Document {
+  id           String         @id @default(uuid())
+  filename     String
+  uploadedAt   DateTime       @default(now())
+  fileUrl      String
+  userId       String
+  user         User           @relation(fields: [userId], references: [id])
+
+  ocrResult    OCRResult?
+  interactions Interaction[]
+}
+
+model OCRResult {
+  id          String   @id @default(uuid())
+  text        String
+  processedAt DateTime @default(now())
+
+  documentId  String   @unique
+  document    Document @relation(fields: [documentId], references: [id])
+}
+
+model Interaction {
+  id         String   @id @default(uuid())
+  role       String
+  message    String
+  createdAt  DateTime @default(now())
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+}
