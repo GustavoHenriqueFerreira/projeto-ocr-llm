@@ -27,7 +27,7 @@ export default function RegisterPage() {
 
     try {
       await register(email, password);
-      setMessage('Cadastro realizado com sucesso! Redirecionando...');
+      setMessage('Cadastro realizado com sucesso! Você será redirecionado em breve...');
       setTimeout(() => router.push('/login'), 1500);
     } catch (err: any) {
       setError(err.message || 'Erro ao cadastrar.');
