@@ -19,7 +19,7 @@ export class OcrController {
   constructor(
     private readonly ocrService: OcrService,
     private readonly documentsService: DocumentsService,
-  ) {}
+  ) { }
 
   @UseGuards(JwtAuthGuard)
   @Post('process/:documentId')
@@ -29,7 +29,6 @@ export class OcrController {
     @Param('documentId') documentId: string,
     @Req() req,
   ) {
-    // Checa se o documento pertence ao usuário
     const document = await this.documentsService.findOne(documentId, req.user.userId);
     if (!document) {
       return { error: 'Documento não encontrado ou não pertence ao usuário' };
